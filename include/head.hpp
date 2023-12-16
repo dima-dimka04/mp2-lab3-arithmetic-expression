@@ -7,14 +7,13 @@ using namespace std;
 
 
 enum class Priority {scobe, num, plus, mult, unar};
-enum LexemeType {lsc, rsc, num, binary, unary, unknown};
+enum LexemeType {lsc, rsc, num, binary, unary, diff, unknown};
 
-class Lexeme
+struct Lexeme
 {
-public:
-	Priority priority;
 	LexemeType type;
+	Priority priority;
 	string value;
 };
 
-enum class Status {StartStatus, NumberStatus, LScobeStatus, RScobeStatus, UnaryStatus, BinaryStatus, ErrorStatus, EndStatus};
+enum class Status { StartStatus, NumberStatus, LScobeStatus, RScobeStatus, UnaryStatus, BinaryStatus, DifferentStatus, ErrorStatus, EndStatus };

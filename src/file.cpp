@@ -1,59 +1,186 @@
 #include "head.hpp"
 
-int Lexeme::priority(char symb)
+bool CheckScobe(string s)
 {
-	int n=-1;
-	if (symb=='(' || symb == ')')
+	return true;
+}
+
+Lexeme GetLexeme(const string& str, int& index, Status status) {
+	string s;
+	if (str[index] == '*' || str[index] == '/')
 	{
-		n = 0;
+		s.push_back(str[index++]);
+		return Lexeme({ LexemeType::binary, Priority::mult, s});
 	}
-	else if (symb == '+' || symb == '-')
+	else if (str[index] == '+' || str[index] == '-')
 	{
-		n = 1;
+		s.push_back(str[index++]);
+		return Lexeme({ LexemeType::binary, Priority::plus, s});
 	}
-	else if (symb == '*' || symb == '/')
+	else if (str[index] == '(')
 	{
-		n = 2;
+		s.push_back(str[index++]);
+		return Lexeme({ LexemeType::lsc, Priority::scobe, s});
+	}
+	else if (str[index] == ')')
+	{
+		s.push_back(str[index++]);
+		return Lexeme({ LexemeType::rsc, Priority::scobe, s});
+	}
+	else if (str[index] >= '0' && str[index] <= '9')
+	{
+		s.push_back(str[index++]);
+		return Lexeme({ LexemeType::num, Priority::num, s });
 	}
 	else
 	{
-		n = 3;
-	}
-	return n;
-}
-
-bool Lexeme::isNumber(char symb)
-{
-	if (symb >= 48 && symb <= 57)
-	{
-		return true;
-	}
-	else
-	{
-		return false;
+		return Lexeme{ LexemeType::unknown, Priority::plus, s = "" };
 	}
 }
 
-bool Lexeme::isOperator(char symb)
+vector<Lexeme> StringToLexeme(string str)
 {
-	if (symb == '+' || symb == '-' || symb == '*' || symb == '/')
+	int k = 0;
+	int ind = 0;
+	vector<Lexeme> v;
+	Status stat = Status::StartStatus;
+	while (ind != str.size())
 	{
-		return true;
+		const Lexeme lexeme = GetLexeme(str, ind, stat);
+		if (stat == Status::StartStatus)
+		{
+			if (lexeme.type == LexemeType::num || lexeme.type == LexemeType::diff)
+			{
+				stat = Status::DifferentStatus;
+			}
+			else if (lexeme.type == LexemeType::lsc)
+			{
+				stat = Status::LScobeStatus;
+				k++;
+			}
+			else
+			{
+				stat = Status::ErrorStatus;
+			}
+		}
+		else if (stat == Status::BinaryStatus)
+		{
+			if (lexeme.type == LexemeType::diff || lexeme.type == LexemeType::num)
+			{
+				stat = Status::DifferentStatus;
+			}
+			else if (lexeme.type == LexemeType::lsc)
+			{
+				stat = Status::LScobeStatus;
+				k++;
+			}
+			else
+			{
+				stat = Status::ErrorStatus;
+			}
+		}
+		else if (stat == Status::DifferentStatus)
+		{
+			if (lexeme.type == LexemeType::binary)
+			{
+				stat = Status::BinaryStatus;
+			}
+			else if (lexeme.type == LexemeType::rsc)
+			{
+				stat = Status::RScobeStatus;
+				k++;
+			}
+			else
+			{
+				stat = Status::ErrorStatus;
+			}
+		}
+		else if (stat == Status::LScobeStatus)
+		{
+			if (lexeme.type == LexemeType::lsc)
+			{
+				stat = Status::LScobeStatus;
+				k++;
+			}
+			else if (lexeme.type == LexemeType::diff || lexeme.type == LexemeType::num)
+			{
+				stat = Status::DifferentStatus;
+			}
+			else
+			{
+				stat = Status::ErrorStatus;
+			}
+		}
+		else if (stat == Status::RScobeStatus)
+		{
+			if (lexeme.type == LexemeType::rsc)
+			{
+				stat = Status::RScobeStatus;
+				k--;
+			}
+			else if (lexeme.type == LexemeType::binary)
+			{
+				stat = Status::BinaryStatus;
+			}
+			else
+			{
+				stat = Status::ErrorStatus;
+			}
+		}
+		else if (stat == Status::ErrorStatus)
+		{
+			cout << "Error string" << endl;
+			exit(0);
+		}
+		v.push_back(lexeme);
+		ind++;
 	}
-	else
-	{
-		return false;
-	}
+	return v;
 }
 
-void Lexeme::delStack()
+stack<Lexeme> PostfixNote(const vector<Lexeme> lex)
 {
-	while (!num.empty()) 
+	stack<Lexeme>res;
+	stack<Lexeme>tmp;
+	for (auto l : lex)
 	{
-		num.pop();
+		if (l.type == LexemeType::num) 
+		{
+			res.push(l);
+		}
+		else if (l.type == LexemeType::lsc) 
+		{
+			tmp.push(l);
+		}
+		else if (l.type == LexemeType::rsc)
+		{
+			while (tmp.top().type != LexemeType::lsc)
+			{
+				res.push(tmp.top());
+				tmp.pop();
+			}
+			tmp.pop();
+		}
+		else if (l.type == LexemeType::binary)
+		{
+			while (!tmp.empty() && tmp.top().priority > l.priority)
+			{
+				res.push(tmp.top());
+				tmp.pop();
+			}
+			tmp.push(l);
+		}
 	}
-	while (!op.empty())
+	while (!tmp.empty())
 	{
-		op.pop();
+		res.push(tmp.top());
+		tmp.pop();
 	}
+	return res;
 }
+
+double CalcPostfix(stack<Lexeme>post)
+{
+	return;
+}
+
