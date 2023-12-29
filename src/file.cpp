@@ -10,26 +10,78 @@ Lexeme GetLexeme(const string& str, int& index, Status status) {
 	if (str[index] == '*' || str[index] == '/')
 	{
 		s.push_back(str[index++]);
-		return Lexeme({ LexemeType::binary, Priority::mult, s});
+		return Lexeme({ LexemeType::binary, Priority::mult, s });
 	}
-	else if (str[index] == '+' || str[index] == '-')
+	else if (str[index] == '+')
 	{
 		s.push_back(str[index++]);
-		return Lexeme({ LexemeType::binary, Priority::plus, s});
+		return Lexeme({ LexemeType::binary, Priority::plus, s });
+	}
+	else if (str[index] == '-')
+	{
+		if (status == Status::StartStatus || status == Status::LScobeStatus)
+		{
+			s.push_back(str[index++]);
+			return Lexeme({ LexemeType::unary, Priority::unar, s });
+		}
+		else if (status == Status::NumberStatus || status == Status::RScobeStatus)
+		{
+			s.push_back(str[index++]);
+			return Lexeme({ LexemeType::binary, Priority::plus, s });
+		}
 	}
 	else if (str[index] == '(')
 	{
 		s.push_back(str[index++]);
-		return Lexeme({ LexemeType::lsc, Priority::scobe, s});
+		return Lexeme({ LexemeType::lsc, Priority::scobe, s });
 	}
+
+	else if (str[index] == '^')
+	{
+		s.push_back(str[index++]);
+		return Lexeme({ LexemeType::binary, Priority::pow, s });
+	}
+
 	else if (str[index] == ')')
 	{
 		s.push_back(str[index++]);
-		return Lexeme({ LexemeType::rsc, Priority::scobe, s});
+		return Lexeme({ LexemeType::rsc, Priority::scobe, s });
+	}
+
+	else if (str.substr(index, 2) == "ln" || str.substr(index, 2) == "pi" || str.substr(index, 2) == "tg" || str.substr(index, 3) == "sin" || str.substr(index, 3) == "cos")
+	{
+		if (str.substr(index, 2) == "ln" || str.substr(index, 2) == "tg")
+		{
+			s.push_back(str[index++]);
+			s.push_back(str[index++]);
+			return Lexeme({ LexemeType::unary, Priority::unar, s });
+		}
+		else if (str.substr(index, 3) == "sin" || str.substr(index, 3) == "cos")
+		{
+			s.push_back(str[index++]);
+			s.push_back(str[index++]);
+			s.push_back(str[index++]);
+			return Lexeme({ LexemeType::unary, Priority::unar, s });
+		}
+		else
+		{
+			s = to_string(std::acos(-1.0)); 
+			index = index + 2;
+			return Lexeme({ LexemeType::num, Priority::num, s});
+		}
+	}
+
+	else if (str[index] == 'e') //added exponent
+	{
+		s = to_string(std::exp(1)); index++;
+		return Lexeme({ LexemeType::num, Priority::num, s });
 	}
 	else if (str[index] >= '0' && str[index] <= '9')
 	{
-		s.push_back(str[index++]);
+		while (str[index] >= '0' && str[index] <= '9')
+		{
+			s.push_back(str[index++]);
+		}
 		return Lexeme({ LexemeType::num, Priority::num, s });
 	}
 	else
@@ -40,7 +92,6 @@ Lexeme GetLexeme(const string& str, int& index, Status status) {
 
 vector<Lexeme> StringToLexeme(string str)
 {
-	int k = 0;
 	int ind = 0;
 	vector<Lexeme> v;
 	Status stat = Status::StartStatus;
@@ -56,7 +107,10 @@ vector<Lexeme> StringToLexeme(string str)
 			else if (lexeme.type == LexemeType::lsc)
 			{
 				stat = Status::LScobeStatus;
-				k++;
+			}
+			else if (lexeme.type == LexemeType::unary)
+			{
+				stat = Status::UnaryStatus;
 			}
 			else
 			{
@@ -72,7 +126,6 @@ vector<Lexeme> StringToLexeme(string str)
 			else if (lexeme.type == LexemeType::lsc)
 			{
 				stat = Status::LScobeStatus;
-				k++;
 			}
 			else
 			{
@@ -88,7 +141,6 @@ vector<Lexeme> StringToLexeme(string str)
 			else if (lexeme.type == LexemeType::rsc)
 			{
 				stat = Status::RScobeStatus;
-				k++;
 			}
 			else
 			{
@@ -100,11 +152,14 @@ vector<Lexeme> StringToLexeme(string str)
 			if (lexeme.type == LexemeType::lsc)
 			{
 				stat = Status::LScobeStatus;
-				k++;
 			}
 			else if (lexeme.type == LexemeType::diff || lexeme.type == LexemeType::num)
 			{
 				stat = Status::DifferentStatus;
+			}
+			else if (lexeme.type == LexemeType::unary)
+			{
+				stat = Status::UnaryStatus;
 			}
 			else
 			{
@@ -116,7 +171,6 @@ vector<Lexeme> StringToLexeme(string str)
 			if (lexeme.type == LexemeType::rsc)
 			{
 				stat = Status::RScobeStatus;
-				k--;
 			}
 			else if (lexeme.type == LexemeType::binary)
 			{
@@ -127,13 +181,31 @@ vector<Lexeme> StringToLexeme(string str)
 				stat = Status::ErrorStatus;
 			}
 		}
+
+		//add unarnyi status
+		else if (stat == Status::UnaryStatus)
+		{
+			if (lexeme.type == LexemeType::num)
+			{
+				stat = Status::NumberStatus;
+			}
+			else if (lexeme.type == LexemeType::lsc)
+			{
+				stat = Status::LScobeStatus;
+			}
+			else
+			{
+				stat = Status::ErrorStatus;
+			}
+		}
+
 		else if (stat == Status::ErrorStatus)
 		{
-			cout << "Error string" << endl;
-			exit(0);
+			/*cout << "Error string" << endl;
+			exit(0);*/
+			throw "wrong expression";
 		}
 		v.push_back(lexeme);
-		ind++;
 	}
 	return v;
 }
@@ -148,7 +220,7 @@ stack<Lexeme> PostfixNote(const vector<Lexeme> lex)
 		{
 			res.push(l);
 		}
-		else if (l.type == LexemeType::lsc) 
+		else if (l.type == LexemeType::lsc || l.type == LexemeType::unary) //added check for unarnyi operator lexeme 
 		{
 			tmp.push(l);
 		}
@@ -176,11 +248,144 @@ stack<Lexeme> PostfixNote(const vector<Lexeme> lex)
 		res.push(tmp.top());
 		tmp.pop();
 	}
+	stack<Lexeme>pres;
+	while (!res.empty())
+	{
+		pres.push(res.top());
+		res.pop();
+	}
+	return pres;
+}
+
+double CalcPostfix(stack<Lexeme>&post)
+{
+	stack<Lexeme>s;
+	while (!post.empty())
+	{
+		Lexeme l = post.top();
+		if (l.type == LexemeType::num)
+		{
+			s.push(l);
+		}
+		else if (l.type == LexemeType::binary)
+		{
+			double b = stod(s.top().value);
+			s.pop();
+			double a = stod(s.top().value);
+			s.pop();
+			if (l.value == "+")
+			{
+				s.push({LexemeType::num, Priority::num, to_string(a + b)});
+			}
+			else if (l.value == "-") 
+			{
+				s.push({ LexemeType::num, Priority::num, to_string(a - b) });
+			}
+			else if (l.value == "*")
+			{
+				s.push({ LexemeType::num, Priority::num, to_string(a * b) });
+			}
+			else if (l.value == "/")	//forbidden division by zero
+			{	
+				if (b == 0)
+				{
+					/*cout << "Division by zero";
+					exit(0);*/
+					throw "division by zero or wrong argument";
+				}
+				else {
+					s.push({ LexemeType::num, Priority::num, to_string(a / b) });
+				}
+			}
+			else if (l.value == "^") //added pow
+			{
+				s.push({ LexemeType::num, Priority::num, to_string(pow(a, b)) });
+			}
+		}
+		else if (l.type == LexemeType::unary)
+		{
+			double a = stod(s.top().value);
+			s.pop();
+			if (l.value == "-") //unarnyi minus
+			{
+				s.push({ LexemeType::num, Priority::num, to_string(-1*a) });
+			}
+			else if (l.value == "ln")
+			{
+				if (a <= 0)
+				{
+					throw "division by zero or wrong argument";
+				}
+				s.push({ LexemeType::num, Priority::num, to_string(std::log(a)) });
+			}
+			else if (l.value == "tg")
+			{
+				s.push({ LexemeType::num, Priority::num, to_string(std::tan(a)) });
+			}
+			else if (l.value == "sin")
+			{
+				s.push({ LexemeType::num, Priority::num, to_string(std::sin(a)) });
+			}
+			else if (l.value == "cos")
+			{
+				s.push({ LexemeType::num, Priority::num, to_string(std::cos(a)) });
+			}
+		}
+
+		post.pop();
+
+	}
+	double res = stod(s.top().value);
 	return res;
 }
 
-double CalcPostfix(stack<Lexeme>post)
+bool MyCheckScobe(const string input) 
 {
-	return;
+	string s = input;
+	int count = 0;
+	for (auto c : s) {
+		if (c == '(') {
+			count++;
+		}
+		else if (c == ')') {
+			count--;
+		}
+		if (count < 0) return false;
+	}
+	return (count == 0);
 }
+
+
+void go(string& input)
+{
+	if (MyCheckScobe(input))
+	{
+		vector<Lexeme> lexemes = StringToLexeme(input);
+		cout << CalcPostfix(PostfixNote(lexemes));
+	}
+	else 
+	{
+		/*cout << "Wrong scobe somewhere";
+		exit(0);*/
+		throw "wrong scobe somewhere";
+	}
+
+}
+
+int main()
+{
+	string str;
+	cout << "Vvedite vyrazhenie bez probelov: \n";
+	cin >> str;
+	cout << endl;
+	try
+	{
+		go(str);
+	}
+	catch (const char* message)
+	{
+		cout << message << endl;
+	}
+}
+
 
